@@ -45,7 +45,7 @@ def get_container_list():
     return container_list
 
 def print_line(indent, header, body_items=[], body_dlm=" "):
-    print("{}{}".format(" "*(indent), header), end="")
+    print("{}{}".format(" "*(indent*2), header), end="")
     if body_items:
         print(body_dlm.join([ "{}".format(i) for i in body_items if i ]),
               end="")
@@ -80,29 +80,29 @@ def print_parent(kv, indent):
                         "Name:{}".format(name)])
         if opt.verbose:
             if kv["Mounts"]:
-                print_line(indent+2, "- ", ["Mount:"])
+                print_line(indent+1, "- ", ["Mount:"])
                 for x in kv["Mounts"]:
-                    print_line(indent+2, "    ",
+                    print_line(indent+1, "    ",
                                [x.get("Name",x.get("Source")),
                                 x.get("Destination")])
             if kv["NetworkSettings"]["Networks"]:
-                print_line(indent+2, "- ", ["Net:"])
+                print_line(indent+1, "- ", ["Net:"])
                 for k, v in kv["NetworkSettings"]["Networks"].items():
-                    print_line(indent+2, "    ", [k, v["IPAddress"]], ":")
+                    print_line(indent+1, "    ", [k, v["IPAddress"]], ":")
             if kv["NetworkSettings"]["Ports"]:
-                print_line(indent+2, "- ", ["Port:"])
+                print_line(indent+1, "- ", ["Port:"])
                 for k, v in kv["NetworkSettings"]["Ports"].items():
                     if v:
-                        print_line(indent+2, "    ",
+                        print_line(indent+1, "    ",
                                    [v[0]["HostIp"], v[0]["HostPort"], k], ":")
                     else:
-                        print_line(indent+2, "    ", [k])
+                        print_line(indent+1, "    ", [k])
     #
     if kv.get("_Child"):
         for cid in kv["_Child"]:
             # XXX too slow
             c = next(x for x in hash_list if x["Id"] == cid)
-            print_parent(c, indent+2)
+            print_parent(c, indent+1)
 
 #
 # main
