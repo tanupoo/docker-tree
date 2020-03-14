@@ -44,57 +44,59 @@ def get_container_list():
         container_list.append(x)
     return container_list
 
+def print_line(indent, header, body_items=[], body_dlm=" "):
+    print("{}{}".format(" "*(indent), header), end="")
+    if body_items:
+        print(body_dlm.join([ "{}".format(i) for i in body_items if i ]),
+              end="")
+    print()
+
 def print_parent(kv, indent):
-    print("  "*indent, end="")
-    #
     status = kv["State"]["Status"]  # saved for use later.
-    status_id = status.capitalize()
     self_id = kv["Id"]
-    ctime = kv["Created"] # assuming like 2020-02-21T22:20:44.446608273Z
     if opt.truncate:
         self_id = self_id.split(":")[-1][:12]
-    if not opt.verbose:
-        status_id = status_id[0]
-        ctime = ""
+    if opt.verbose:
+        status_id = status.capitalize()
+        ctime = kv["Created"]
+    else:
+        status_id = status.capitalize()[0]
+        ctime = None
     #
-    print("{} {} {}".format(status_id, self_id, ctime), end="")
+    name = kv.get("Name", "")
+    if opt.debug:
+        print("Name:", name)
     if status == "image":
         # image
         if kv["RepoTags"]:
-            print("Tag: {}".format(",".join(kv["RepoTags"])))
+            print_line(indent, "> ",
+                       [status_id, self_id, ctime,
+                        "Tag:{}".format(",".join(kv["RepoTags"]))])
         else:
-            print()
+            print_line(indent, "> ", [status_id, self_id, ctime])
     else:
         # container
+        print_line(indent, "> ", [status_id, self_id, ctime,
+                        "Name:{}".format(name)])
         if opt.verbose:
-            print()
-            print("{}> Mount:".format("  "*(indent+2)))
-            for x in kv["Mounts"]:
-                print("{}>    {} {}".format(
-                        "  "*(indent+2),
-                        x.get("Name",x.get("Source")),
-                        x.get("Destination")))
-            print("{}> Net:".format("  "*(indent+2)))
-            for k, v in kv["NetworkSettings"]["Networks"].items():
-                print("{}>    {} : {}".format(
-                        "  "*(indent+2),
-                        k, v["IPAddress"]
-                ))
-            print("{}> Port:".format("  "*(indent+2)))
-            # >    8080/tcp : [{'HostIp': '0.0.0.0', 'HostPort': '8080'}]
-            for k, v in kv["NetworkSettings"]["Ports"].items():
-                if v:
-                    print("{}>    {}:{}:{}".format(
-                            "  "*(indent+2),
-                            v[0]["HostIp"], v[0]["HostPort"], k
-                        ))
-                else:
-                    print("{}>    {}".format(
-                            "  "*(indent+2),
-                            k
-                        ))
-        else:
-            print()
+            if kv["Mounts"]:
+                print_line(indent+2, "- ", ["Mount:"])
+                for x in kv["Mounts"]:
+                    print_line(indent+2, "    ",
+                               [x.get("Name",x.get("Source")),
+                                x.get("Destination")])
+            if kv["NetworkSettings"]["Networks"]:
+                print_line(indent+2, "- ", ["Net:"])
+                for k, v in kv["NetworkSettings"]["Networks"].items():
+                    print_line(indent+2, "    ", [k, v["IPAddress"]], ":")
+            if kv["NetworkSettings"]["Ports"]:
+                print_line(indent+2, "- ", ["Port:"])
+                for k, v in kv["NetworkSettings"]["Ports"].items():
+                    if v:
+                        print_line(indent+2, "    ",
+                                   [v[0]["HostIp"], v[0]["HostPort"], k], ":")
+                    else:
+                        print_line(indent+2, "    ", [k])
     #
     if kv.get("_Child"):
         for cid in kv["_Child"]:
@@ -134,6 +136,6 @@ for i in range(len(hash_list)):
 for kv in hash_list:
     if not kv["Parent"]:
         # it's a grand parent.
-        print()
         print_parent(kv, 0)
+        print()
 
