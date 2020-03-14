@@ -57,7 +57,13 @@ def print_parent(kv, indent):
         ctime = ""
     #
     print("{} {} {}".format(status_id, self_id, ctime), end="")
-    if status == "running":
+    if status == "image":
+        # image
+        if kv["RepoTags"]:
+            print("Tag:{}".format(kv["RepoTags"]))
+        else:
+            print()
+    else:
         # container
         print()
         print("{}> Mount:".format("  "*(indent+2)))
@@ -85,15 +91,6 @@ def print_parent(kv, indent):
                         "  "*(indent+2),
                         k
                     ))
-    elif status == "image":
-        # image
-        if kv["RepoTags"]:
-            print("Tag:{}".format(kv["RepoTags"]))
-        else:
-            print()
-    else:
-        # others
-        print()
     #
     if kv.get("_Child"):
         for cid in kv["_Child"]:
