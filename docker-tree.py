@@ -112,7 +112,7 @@ from argparse import ArgumentDefaultsHelpFormatter
 ap = ArgumentParser(
         description="display tree of docker containers and images.",
         formatter_class=ArgumentDefaultsHelpFormatter)
-ap.add_argument("--no-trunc", action="store_false", dest="truncate",
+ap.add_argument("--no-trunc", "-l", action="store_false", dest="truncate",
                 help="disable hash truncation.")
 ap.add_argument("--verbose", "-v", action="store_true", dest="verbose",
                 help="enable verbose mode.")
