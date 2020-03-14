@@ -54,7 +54,7 @@ def print_parent(kv, indent):
     if opt.truncate:
         status_id = status_id[0]
         self_id = self_id.split(":")[-1][:12]
-        ctime = ctime.replace("T", " ").split(".")[0]
+        ctime = ""
     #
     print("{} {} {}".format(status_id, self_id, ctime), end="")
     if status == "running":
@@ -88,10 +88,11 @@ def print_parent(kv, indent):
     elif status == "image":
         # image
         if kv["RepoTags"]:
-            print(" Tag:{}".format(kv["RepoTags"]))
+            print("Tag:{}".format(kv["RepoTags"]))
         else:
             print()
     else:
+        # others
         print()
     #
     if kv.get("_Child"):
