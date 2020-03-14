@@ -52,45 +52,49 @@ def print_parent(kv, indent):
     self_id = kv["Id"]
     ctime = kv["Created"] # assuming like 2020-02-21T22:20:44.446608273Z
     if opt.truncate:
-        status_id = status_id[0]
         self_id = self_id.split(":")[-1][:12]
+    if not opt.verbose:
+        status_id = status_id[0]
         ctime = ""
     #
     print("{} {} {}".format(status_id, self_id, ctime), end="")
     if status == "image":
         # image
         if kv["RepoTags"]:
-            print("Tag:{}".format(kv["RepoTags"]))
+            print("Tag: {}".format(",".join(kv["RepoTags"])))
         else:
             print()
     else:
         # container
-        print()
-        print("{}> Mount:".format("  "*(indent+2)))
-        for x in kv["Mounts"]:
-            print("{}>    {} {}".format(
-                    "  "*(indent+2),
-                    x.get("Name",x.get("Source")),
-                    x.get("Destination")))
-        print("{}> Net:".format("  "*(indent+2)))
-        for k, v in kv["NetworkSettings"]["Networks"].items():
-            print("{}>    {} : {}".format(
-                    "  "*(indent+2),
-                    k, v["IPAddress"]
-            ))
-        print("{}> Port:".format("  "*(indent+2)))
-        # >    8080/tcp : [{'HostIp': '0.0.0.0', 'HostPort': '8080'}]
-        for k, v in kv["NetworkSettings"]["Ports"].items():
-            if v:
-                print("{}>    {}:{}:{}".format(
+        if opt.verbose:
+            print()
+            print("{}> Mount:".format("  "*(indent+2)))
+            for x in kv["Mounts"]:
+                print("{}>    {} {}".format(
                         "  "*(indent+2),
-                        v[0]["HostIp"], v[0]["HostPort"], k
-                    ))
-            else:
-                print("{}>    {}".format(
+                        x.get("Name",x.get("Source")),
+                        x.get("Destination")))
+            print("{}> Net:".format("  "*(indent+2)))
+            for k, v in kv["NetworkSettings"]["Networks"].items():
+                print("{}>    {} : {}".format(
                         "  "*(indent+2),
-                        k
-                    ))
+                        k, v["IPAddress"]
+                ))
+            print("{}> Port:".format("  "*(indent+2)))
+            # >    8080/tcp : [{'HostIp': '0.0.0.0', 'HostPort': '8080'}]
+            for k, v in kv["NetworkSettings"]["Ports"].items():
+                if v:
+                    print("{}>    {}:{}:{}".format(
+                            "  "*(indent+2),
+                            v[0]["HostIp"], v[0]["HostPort"], k
+                        ))
+                else:
+                    print("{}>    {}".format(
+                            "  "*(indent+2),
+                            k
+                        ))
+        else:
+            print()
     #
     if kv.get("_Child"):
         for cid in kv["_Child"]:
@@ -108,6 +112,8 @@ ap = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter)
 ap.add_argument("--no-trunc", action="store_false", dest="truncate",
                 help="disable hash truncation.")
+ap.add_argument("--verbose", "-v", action="store_true", dest="verbose",
+                help="enable verbose mode.")
 ap.add_argument("--debug", action="store_true", dest="debug",
                 help="enable debug mode.")
 opt = ap.parse_args()
