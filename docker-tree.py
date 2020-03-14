@@ -25,9 +25,9 @@ def get_image_list():
     result = exec_os_cmd("docker image ls -a --format '{{.ID}}' --no-trunc")
     for i in result.splitlines():
         result = exec_os_cmd("docker inspect {}".format(i.decode()))
-        # add {"State":"stored"}
+        # add {"State":"image"}
         x = json.loads(result)[0]
-        x.update({"State":{"Status":"stored"}})
+        x.update({"State":{"Status":"image"}})
         image_list.append(x)
     return image_list
 
@@ -85,12 +85,14 @@ def print_parent(kv, indent):
                         "  "*(indent+2),
                         k
                     ))
-    elif status == "stored":
+    elif status == "image":
         # image
         if kv["RepoTags"]:
             print(" Tag:{}".format(kv["RepoTags"]))
         else:
             print()
+    else:
+        print()
     #
     if kv.get("_Child"):
         for cid in kv["_Child"]:
