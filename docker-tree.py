@@ -3,6 +3,14 @@
 from subprocess import Popen, PIPE
 import shlex
 import json
+import sys
+
+(HDR1, HDR_NRM, HDR_END) = ("> ", "+-", "+-")
+KEY_NODE_ID = "Id"
+KEY_CHILDREN = "__children"
+padlen = len(HDR_NRM + HDR1)
+INFO_HDR = "  - "
+INFO_HDR2 = "    "
 
 def exec_os_cmd(cmd):
     if opt.debug:
@@ -44,16 +52,43 @@ def get_container_list():
         container_list.append(x)
     return container_list
 
-def print_line(indent, header, body_items=[], body_dlm=" "):
-    print("{}{}".format(" "*(indent*2), header), end="")
+def make_from_bottom_up_tree(L):
+    def suspend(obj, xlist):
+        for x in xlist:
+            if obj["Parent"] == x[KEY_NODE_ID]:
+                x.setdefault(KEY_CHILDREN, []).append(obj)
+                return True
+            elif x.get(KEY_CHILDREN):
+                if suspend(obj, x.get(KEY_CHILDREN)):
+                    return True
+
+    for i in range(len(L)):
+        x = L.pop(0)
+        if x["Parent"]:
+            suspend(x, L)
+        else:
+            L.append(x)
+
+def sort_tree(xlist):
+    for x in xlist:
+        if x.get(KEY_CHILDREN):
+            x[KEY_CHILDREN] = sort_tree(x[KEY_CHILDREN])
+    return sorted(xlist, key=lambda x:(x[KEY_NODE_ID]))
+
+def print_line(header, body_items=[], body_dlm=" "):
+    print("{}".format(header), end="")
     if body_items:
         print(body_dlm.join([ "{}".format(i) for i in body_items if i ]),
               end="")
     print()
 
-def print_parent(kv, indent):
+def print_node(kv, header, last_child):
+    if last_child:
+        head = HDR_END + HDR1
+    else:
+        head = HDR_NRM + HDR1
     status = kv["State"]["Status"]  # saved for use later.
-    self_id = kv["Id"]
+    self_id = kv[KEY_NODE_ID]
     if opt.truncate:
         self_id = self_id.split(":")[-1][:12]
     if opt.verbose:
@@ -69,40 +104,55 @@ def print_parent(kv, indent):
     if status == "image":
         # image
         if kv["RepoTags"]:
-            print_line(indent, "> ",
+            print_line(header+head,
                        [status_id, self_id, ctime,
                         "Tag:{}".format(",".join(kv["RepoTags"]))])
         else:
-            print_line(indent, "> ", [status_id, self_id, ctime])
+            print_line(header+head, [status_id, self_id, ctime])
     else:
         # container
-        print_line(indent, "> ", [status_id, self_id, ctime,
-                        "Name:{}".format(name)])
+        print_line(header+head,
+                   [status_id, self_id, ctime, "Name:{}".format(name)])
         if opt.verbose:
+            if last_child:
+                header += " ".ljust(padlen)
+            else:
+                header += "|".ljust(padlen)
             if kv["Mounts"]:
-                print_line(indent+1, "- ", ["Mount:"])
+                print_line(header+INFO_HDR, ["Mount:"])
                 for x in kv["Mounts"]:
-                    print_line(indent+1, "    ",
+                    print_line(header+INFO_HDR2,
                                [x.get("Name",x.get("Source")),
                                 x.get("Destination")])
             if kv["NetworkSettings"]["Networks"]:
-                print_line(indent+1, "- ", ["Net:"])
+                print_line(header+INFO_HDR, ["Net:"])
                 for k, v in kv["NetworkSettings"]["Networks"].items():
-                    print_line(indent+1, "    ", [k, v["IPAddress"]], ":")
+                    print_line(header+INFO_HDR2, [k, v["IPAddress"]], ":")
             if kv["NetworkSettings"]["Ports"]:
-                print_line(indent+1, "- ", ["Port:"])
+                print_line(header+INFO_HDR, ["Port:"])
                 for k, v in kv["NetworkSettings"]["Ports"].items():
                     if v:
-                        print_line(indent+1, "    ",
+                        print_line(header+INFO_HDR2,
                                    [v[0]["HostIp"], v[0]["HostPort"], k], ":")
                     else:
-                        print_line(indent+1, "    ", [k])
-    #
-    if kv.get("_Child"):
-        for cid in kv["_Child"]:
-            # XXX too slow
-            c = next(x for x in hash_list if x["Id"] == cid)
-            print_parent(c, indent+1)
+                        print_line(header+INFO_HDR2, [k])
+
+def print_child_tree(xlist, header, last_child):
+    if last_child:
+        header += " ".ljust(padlen)
+    else:
+        header += "|".ljust(padlen)
+    print_tree(xlist, header)
+
+def print_tree(hash_list, header):
+    n = 0
+    for x in hash_list:
+        n += 1
+        last_child = (n == len(hash_list))
+        print_node(x, header, last_child)
+        c = x.get(KEY_CHILDREN)
+        if c:
+            print_child_tree(c, header, last_child)
 
 #
 # main
@@ -123,19 +173,6 @@ opt = ap.parse_args()
 # get list.
 hash_list = get_image_list()
 hash_list.extend(get_container_list())
-
-# set _Child.
-for i in range(len(hash_list)):
-    pid = hash_list[i]["Parent"]
-    if pid:
-        for j in range(len(hash_list)):
-            if hash_list[j]["Id"] == pid:
-                hash_list[j].setdefault("_Child", []).append(hash_list[i]["Id"])
-
-# print result.
-for kv in hash_list:
-    if not kv["Parent"]:
-        # it's a grand parent.
-        print_parent(kv, 0)
-        print()
-
+make_from_bottom_up_tree(hash_list)
+hash_list = sort_tree(hash_list)
+print_tree(hash_list, "")
