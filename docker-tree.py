@@ -82,6 +82,17 @@ def print_line(header, body_items=[], body_dlm=" "):
               end="")
     print()
 
+def get_better_unit(base_num):
+    units = [ "B", "KB", "MB", "GB", "TB", "PB" ]
+    if base_num < 1000:
+        return base_num, units[0]
+    ret = float(base_num)
+    for i in range(len(units)):
+        if ret < 1000:
+            break
+        ret = round(ret/1000, 2)
+    return ret, units[i]
+
 def print_node(kv, header, last_child):
     if last_child:
         head = HDR_END + HDR1
@@ -94,9 +105,12 @@ def print_node(kv, header, last_child):
     if opt.verbose:
         status_id = status.capitalize()
         ctime = kv["Created"]
+        img_size, unit = get_better_unit(kv["Size"])
+        img_size = f"{img_size} {unit}"
     else:
         status_id = status.capitalize()[0]
         ctime = None
+        img_size = None
     #
     name = kv.get("Name", "")
     if opt.debug:
@@ -105,14 +119,15 @@ def print_node(kv, header, last_child):
         # image
         if kv["RepoTags"]:
             print_line(header+head,
-                       [status_id, self_id, ctime,
+                       [status_id, self_id, ctime, img_size,
                         "Tag:{}".format(",".join(kv["RepoTags"]))])
         else:
-            print_line(header+head, [status_id, self_id, ctime])
+            print_line(header+head, [status_id, self_id, ctime, img_size])
     else:
         # container
         print_line(header+head,
-                   [status_id, self_id, ctime, "Name:{}".format(name)])
+                   [status_id, self_id, ctime, img_size,
+                    "Name:{}".format(name)])
         if opt.verbose:
             if last_child:
                 header += " ".ljust(padlen)
