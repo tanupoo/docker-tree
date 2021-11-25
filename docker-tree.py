@@ -83,6 +83,8 @@ def print_line(header, body_items=[], body_dlm=" "):
     print()
 
 def get_better_unit(base_num):
+    if base_num is None:
+        return 0, ""
     units = [ "B", "KB", "MB", "GB", "TB", "PB" ]
     if base_num < 1000:
         return base_num, units[0]
@@ -105,7 +107,7 @@ def print_node(kv, header, last_child):
     if opt.verbose:
         status_id = status.capitalize()
         ctime = kv["Created"]
-        img_size, unit = get_better_unit(kv["Size"])
+        img_size, unit = get_better_unit(kv.get("Size"))
         img_size = f"{img_size} {unit}"
     else:
         status_id = status.capitalize()[0]
